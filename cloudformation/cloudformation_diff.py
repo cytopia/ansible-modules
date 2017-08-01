@@ -23,38 +23,78 @@ ANSIBLE_METADATA = {'metadata_version': '1.0',
 
 DOCUMENTATION = '''
 ---
-module: cfndiff
-short_description: Diff compares two cloudformation templates regardless of being json or yaml.
+module: cloudformation_diff
+short_description: Diff compare changes that would occur when submitting local cloudformation template to AWS remote.
 description:
-     -  Compares two cloudformation templates which both can have equal or different formats (json or yaml). If the files differ, their diff will be printed in C(--diff) mode and the module marks its run as C(changed).
+    -  Shows the changes of the cloudformation template, parameters and tags that would occur in case you actually submit the changes to AWS remote. The diff output is only viewable when using Ansible's C(--diff) mode. Diffs will be marked as C(changed).
 version_added: 2.3
 options:
-  lft:
-    description:
-      - Original cfn template file path
-      - Can be a json or yaml file
-    required: true
-    default: null
-    aliases: []
-  rgt:
-    description:
-      - New cfn template file path
-      - Can be a json or yaml file
-    required: true
-    default: null
-    aliases: []
-  format:
-    required: false
-    choices: [ json, yaml ]
-    default: "yaml"
-    aliases: []
-    description:
-      - Diff returned in either json or yaml format. (defaults to yaml)
+    stack_name:
+        description:
+            - name of the cloudformation stack
+        required: true
+        default: null
+        aliases: []
+
+    template:
+        description:
+            - path to local cloudformation template file (yaml or json)
+        required: true
+        default: null
+        aliases: []
+
+    template_parameters:
+        description:
+            - dict of variable template parameters to add to the stack.
+        required: false
+        default: {}
+        aliases: []
+
+    template_tags:
+        description:
+            - dict of tags to asign to the stack.
+        required: false
+        default: {}
+        aliases: []
+
+    ignore_template_desc:
+        description:
+            - In template diff mode, ignore the template description
+        required: false
+        default: false
+        aliases: []
+
+    ignore_hidden_params:
+        description:
+            - In parameter diff mode, ignore any template parameters with 'NoEcho: true'
+        required: false
+        default: false
+        aliases: []
+
+    output_format:
+        description:
+            - Specify in what format to view the diff output ('json' or 'yaml')
+        required: false
+        default: 'json'
+        aliases: []
+
+    output_format:
+        description:
+            - Specify what to diff ('template', 'parameters' or 'tags')
+        required: false
+        default: 'template'
+        aliases: []
+
 requirements:
-   - cfn_flip python module: C(pip install cfn_flip)
+    - python >= 2.6
+    - boto3 >= 1.0.0
+    - cfn_flip python module: C(pip install cfn_flip)
+extends_documentation_fragment:
+    - aws
+    - ec2
 author: cytopia (@cytopia)
 notes:
-  - The "cfndiff" compares (diffs) two cloudformation template files regardless of being json or yaml.
+    - The "cfndiff" compares (diffs) two cloudformation template files regardless of being json or yaml.
 '''
 EXAMPLES = '''
 #
@@ -213,7 +253,7 @@ def quote_json(obj):
 def to_dict(items, key, value):
     '''
     Transforms a list of items to a Key/Value dictionary
-    Partly copied from cloudformation_facts module.
+    Copied from cloudformation_facts module.
     '''
     if items:
         return dict(zip([i[key] for i in items], [i[value] for i in items]))
@@ -317,19 +357,22 @@ def main():
     cfndiff main entry point.
     '''
     # Ansible module input parameter
+    argument_spec = ec2_argument_spec()
+    argument_spec.update(dict(
+        stack_name=dict(required=True, type='str'),
+        template=dict(required=True, type='path'),
+        template_parameters=dict(required=False, type='dict', default={}),
+        template_tags=dict(required=False, type='dict', default={}),
+        ignore_template_desc=dict(required=False, type='bool', default=False),
+        ignore_hidden_params=dict(required=False, type='bool', default=False),
+        output_format=dict(required=False, default='json', choices=['json', 'yaml']),
+        output_choice=dict(required=False, default='template', choices=['template', 'parameter', 'tags']),
+    ))
+
+    # This module should actually only be run in check mode ;-)
     module = AnsibleModule(
-        argument_spec = dict(
-            stack_name=dict(required=True, type='str'),
-            template=dict(required=True, type='path'),
-            template_parameters=dict(required=False, type='dict', default={}),
-            template_tags=dict(required=False, type='dict', default={}),
-            ignore_template_desc=dict(required=False, type='bool', default=False),
-            ignore_hidden_params=dict(required=False, type='bool', default=False),
-            output_format=dict(required=False, default='json', choices=['json', 'yaml']),
-            output_choice=dict(required=False, default='template', choices=['template', 'parameter', 'tags']),
-        ),
-        # This module should actually only be run in check mode ;-)
-        supports_check_mode=True,
+        argument_spec=argument_spec,
+        supports_check_mode=True
     )
 
     # Validate module
