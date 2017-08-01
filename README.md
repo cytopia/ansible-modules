@@ -27,7 +27,7 @@ The diff output can be in `json` or `yaml` depending on your preferred choice to
 # to view the diff, you must also specify --diff
 
 - name: "diff Cloudformation template: {{ cfn_stack_name }}"
-  cfndiff:
+  cloudformation_diff:
     stack_name: "{{ cfn_stack_name }}"
     template: "{{ cfn_template }}"
     template_parameters: "{{ cfn_template_parameters }}"
@@ -39,7 +39,7 @@ The diff output can be in `json` or `yaml` depending on your preferred choice to
   check_mode: no
 
 - name: "diff Cloudformation template params: {{ cfn_stack_name }}"
-  cfndiff:
+  cloudformation_diff:
     stack_name: "{{ cfn_stack_name }}"
     template: "{{ cfn_template }}"
     template_parameters: "{{ cfn_template_parameters }}"
@@ -51,7 +51,7 @@ The diff output can be in `json` or `yaml` depending on your preferred choice to
   check_mode: no
 
 - name: "diff Cloudformation template tags: {{ cfn_stack_name }}"
-  cfndiff:
+  cloudformation_diff:
     stack_name: "{{ cfn_stack_name }}"
     template: "{{ cfn_template }}"
     template_parameters: "{{ cfn_template_parameters }}"
