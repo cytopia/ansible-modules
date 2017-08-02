@@ -19,6 +19,11 @@ Changes that can be omitted by the module:
 
 The diff output can be in `json` or `yaml` depending on your preferred choice to view the diff.
 
+```shell
+# Ansible dry-run to see what would change
+$ ansible-playbook cfn-playbook.yml --diff --check
+```
+
 ```yaml
 # By using the following:
 #   when: ansible_check_mode
@@ -26,6 +31,10 @@ The diff output can be in `json` or `yaml` depending on your preferred choice to
 # you can make sure to only run the cloudformation_diff in ansible --check mode
 # to view the diff, you must also specify --diff
 
+# Get changes for the template only and ignore
+# the template description.
+# Local stack file can be json or yaml.
+# Diff is shown in yaml.
 - name: "diff Cloudformation template: {{ cfn_stack_name }}"
   cloudformation_diff:
     stack_name: "{{ cfn_stack_name }}"
@@ -38,6 +47,10 @@ The diff output can be in `json` or `yaml` depending on your preferred choice to
   when: ansible_check_mode
   check_mode: no
 
+# Get changes for the parameters and ignore any
+# NoEcho: true parameters.
+# Local stack file can be json or yaml.
+# Diff is shown in json.
 - name: "diff Cloudformation template params: {{ cfn_stack_name }}"
   cloudformation_diff:
     stack_name: "{{ cfn_stack_name }}"
@@ -50,6 +63,9 @@ The diff output can be in `json` or `yaml` depending on your preferred choice to
   when: ansible_check_mode
   check_mode: no
 
+# Get changes for the tags.
+# Local stack file can be json or yaml.
+# Diff is shown in json.
 - name: "diff Cloudformation template tags: {{ cfn_stack_name }}"
   cloudformation_diff:
     stack_name: "{{ cfn_stack_name }}"

@@ -97,31 +97,70 @@ notes:
     - The "cfndiff" compares (diffs) two cloudformation template files regardless of being json or yaml.
 '''
 EXAMPLES = '''
-#
-# Create a dry-run (faked with --check mode) for cloudformation templates
-#
-- name: get upstream cloudformation stack template for vpc-prod
-  cloudformation_facts:
-    stack_name: vpc-prod
-    stack_template: yes
-  register: reg_cfn_template
-  failed_when: False
+# By using the following:
+#   when: ansible_check_mode
+#   check_mode: no
+# you can make sure to only run the cloudformation_diff in ansible --check mode
+# to view the diff, you must also specify --diff
+
+# Get changes for the template only and ignore
+# the template description.
+# Input stack is yaml (can also be json).
+# Diff is shown in yaml.
+# Run: ansible-playbook playbook.yml --diff --check
+- name: diff Cloudformation template
+  cloudformation_diff:
+    stack_name: "cloudformation-example-stack"
+    region: "us-east-1"
+    template: "files/cloudformation-example.yml"
+    template_parameters:
+      keyName: Value
+      InstanceType: "m1.small"
+    template_tags:
+      env: testing
+    ignore_template_desc: yes
+    output_choice: template
+    output_format: yaml
   when: ansible_check_mode
   check_mode: no
 
-- name: copy remote stack content into temporary file
-  copy:
-    content: "{{ reg_cfn_template['ansible_facts']['cloudformation']['vpc-prod']['stack_template'] }}"
-    dest: /tmp/vpc-prod.yml
-  changed_when: False
+# Get changes for the parameters and ignore any
+# NoEcho: true parameters.
+# Input stack is yaml (can also be json).
+# Diff is shown in json.
+# Run: ansible-playbook playbook.yml --diff --check
+- name: diff Cloudformation template params
+  cloudformation_diff:
+    stack_name: "cloudformation-example-stack"
+    region: "us-east-1"
+    template: "files/cloudformation-example.yml"
+    template_parameters:
+      keyName: Value
+      InstanceType: "m1.small"
+    template_tags:
+      env: testing
+    ignore_hidden_params: yes
+    output_choice: parameter
+    output_format: json
   when: ansible_check_mode
   check_mode: no
 
-# Compare current local vs remotely applied version
-- cfndiff:
-    lft: /tmp/vpc-prod.yml
-    rgt: files/vpc-prod.yml
-    format: yaml
+# Get changes for the tags.
+# Input stack is json (can also be yaml).
+# Diff is shown in json.
+# Run: ansible-playbook playbook.yml --diff --check
+- name: diff Cloudformation template tags
+  cloudformation_diff:
+    stack_name: "cloudformation-example-stack"
+    region: "us-east-1"
+    template: "files/cloudformation-example.json"
+    template_parameters:
+      keyName: Value
+      InstanceType: "m1.small"
+    template_tags:
+      env: testing
+    output_choice: tags
+    output_format: json
   when: ansible_check_mode
   check_mode: no
 '''
