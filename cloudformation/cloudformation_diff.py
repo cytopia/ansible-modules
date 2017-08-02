@@ -78,7 +78,7 @@ options:
         default: 'json'
         aliases: []
 
-    output_format:
+    output_choice:
         description:
             - Specify what to diff ('template', 'parameters' or 'tags')
         required: false
