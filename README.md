@@ -37,6 +37,7 @@ $ ansible-playbook cfn-playbook.yml --diff --check
 # Diff is shown in yaml.
 - name: "diff Cloudformation template: {{ cfn_stack_name }}"
   cloudformation_diff:
+    region: "us-east-1"
     stack_name: "{{ cfn_stack_name }}"
     template: "{{ cfn_template }}"
     template_parameters: "{{ cfn_template_parameters }}"
@@ -53,6 +54,7 @@ $ ansible-playbook cfn-playbook.yml --diff --check
 # Diff is shown in json.
 - name: "diff Cloudformation template params: {{ cfn_stack_name }}"
   cloudformation_diff:
+    region: "us-east-1"
     stack_name: "{{ cfn_stack_name }}"
     template: "{{ cfn_template }}"
     template_parameters: "{{ cfn_template_parameters }}"
@@ -68,6 +70,7 @@ $ ansible-playbook cfn-playbook.yml --diff --check
 # Diff is shown in json.
 - name: "diff Cloudformation template tags: {{ cfn_stack_name }}"
   cloudformation_diff:
+    region: "us-east-1"
     stack_name: "{{ cfn_stack_name }}"
     template: "{{ cfn_template }}"
     template_parameters: "{{ cfn_template_parameters }}"
