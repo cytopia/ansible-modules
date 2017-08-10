@@ -35,6 +35,7 @@ The diff output can be in `json` or `yaml` depending on your preferred choice to
 | template_tags  | no  |         |         | Dict of tags to asign to the stack. |
 | ignore_template_desc | no | no | `yes` or `no` | In template diff mode, ignore the template description |
 | ignore_hidden_params | no | no | `yes` or `no` | In parameter diff mode, ignore any template parameters with 'NoEcho: true' |
+| ignore_final_newline | no | no | `yes` or `no` | In all diff modes, remove any trailing newline (\n or \r) |
 | output_format  | no  | json | `json` or `yaml` | Specify in what format to view the diff output ('json' or 'yaml') |
 | output_choice  | no  | template | `template`, `parameters` or `tags` | Specify what to diff ('template', 'parameters' or 'tags') |
 | validate_certs | no  | yes     | `yes` or `no` | When set to "no", SSL certificates will not be validated for boto versions >= 2.6.0. |

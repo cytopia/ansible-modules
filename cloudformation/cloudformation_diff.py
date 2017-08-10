@@ -24,63 +24,73 @@ ANSIBLE_METADATA = {'metadata_version': '1.0',
 DOCUMENTATION = '''
 ---
 module: cloudformation_diff
+author: cytopia (@cytopia)
+
 short_description: Diff compare changes that would occur when submitting local cloudformation template to AWS remote.
 description:
     -  Shows the changes of the cloudformation template, parameters and tags that would occur in case you actually submit the changes to AWS remote. The diff output is only viewable when using Ansible's C(--diff) mode. Diffs will be marked as C(changed).
-version_added: 2.3
+    - More examples at U(https://github.com/cytopia/ansible-modules)
+version_added: "2.4"
 options:
     stack_name:
         description:
-            - name of the cloudformation stack
+            - Name of the cloudformation stack.
         required: true
         default: null
         aliases: []
 
     template:
         description:
-            - path to local cloudformation template file (yaml or json)
+            - Path to local cloudformation template file (yaml or json).
         required: true
         default: null
         aliases: []
 
     template_parameters:
         description:
-            - dict of variable template parameters to add to the stack.
+            - Dict of variable template parameters to add to the stack.
         required: false
         default: {}
         aliases: []
 
     template_tags:
         description:
-            - dict of tags to asign to the stack.
+            - Dict of tags to asign to the stack.
         required: false
         default: {}
         aliases: []
 
     ignore_template_desc:
         description:
-            - In template diff mode, ignore the template description
+            - In template diff mode, ignore the template description.
         required: false
         default: false
         aliases: []
 
     ignore_hidden_params:
         description:
-            - In parameter diff mode, ignore any template parameters with 'NoEcho: true'
+            - In parameter diff mode, ignore any template parameters with 'NoEcho: true'.
+        required: false
+        default: false
+        aliases: []
+
+    ignore_final_newline:
+        description:
+            - Strip any final newlines (\n) and (\r) for diff output.
         required: false
         default: false
         aliases: []
 
     output_format:
         description:
-            - Specify in what format to view the diff output ('json' or 'yaml')
+            - Specify in what format to view the diff output ('json' or 'yaml').
         required: false
         default: 'json'
         aliases: []
 
     output_choice:
         description:
-            - Specify what to diff ('template', 'parameters' or 'tags')
+            - Specify what to diff ('template', 'parameters' or 'tags').
         required: false
         default: 'template'
         aliases: []
@@ -88,14 +98,12 @@ options:
 requirements:
     - python >= 2.6
     - boto3 >= 1.0.0
-    - cfn_flip python module: C(pip install cfn_flip)
+    - cfn_flip
 extends_documentation_fragment:
     - aws
     - ec2
-author: cytopia (@cytopia)
-notes:
-    - The "cfndiff" compares (diffs) two cloudformation template files regardless of being json or yaml.
 '''
+
 EXAMPLES = '''
 # By using the following:
 #   when: ansible_check_mode
@@ -288,6 +296,17 @@ def quote_json(obj):
         return {quote_json(key):quote_json(value) for key, value in obj.items()}
     return obj
 
+def del_newline_json(obj):
+    '''
+    Remove final newline
+    '''
+    if type(obj) in (bool, str, int, float, long, complex):
+        return str(obj).rstrip('\r\n')
+    if isinstance(obj, (list, tuple)):
+        return [del_newline_json(item) for item in obj]
+    if isinstance(obj, dict):
+        return {del_newline_json(key):del_newline_json(value) for key, value in obj.items()}
+    return str(obj).rstrip('\r\n')
 
 def to_dict(items, key, value):
     '''
@@ -404,6 +423,7 @@ def main():
         template_tags=dict(required=False, type='dict', default={}),
         ignore_template_desc=dict(required=False, type='bool', default=False),
         ignore_hidden_params=dict(required=False, type='bool', default=False),
+        ignore_final_newline=dict(required=False, type='bool', default=False),
         output_format=dict(required=False, default='json', choices=['json', 'yaml']),
         output_choice=dict(required=False, default='template', choices=['template', 'parameter', 'tags']),
     ))
@@ -425,6 +445,7 @@ def main():
     local_tags = module.params.get('template_tags')
     ignore_template_desc = module.params.get('ignore_template_desc')
     ignore_hidden_params = module.params.get('ignore_hidden_params')
+    ignore_final_newline = module.params.get('ignore_final_newline')
 
     # Get AWS Cloudformation data
     service_mgr = CloudFormationServiceManager(module)
@@ -437,6 +458,18 @@ def main():
     # Get local data
     with open(module.params.get('template'), "rt") as f:
         local_template = f.read().decode("UTF-8")
+
+    # Ignore final newline?
+    #
+    # When yes, then we remove final newlines
+    if ignore_final_newline:
+         cloud_template = del_newline_json(get_json_or_yaml(cloud_template, 'json'))
+         local_template = del_newline_json(get_json_or_yaml(local_template, 'json'))
+         cloud_params = del_newline_json(get_json_or_yaml(cloud_params, 'json'))
+         local_params = del_newline_json(get_json_or_yaml(local_params, 'json'))
+         cloud_tags = del_newline_json(get_json_or_yaml(cloud_tags, 'json'))
+         local_tags = del_newline_json(get_json_or_yaml(local_tags, 'json'))
+
 
     # Get diff output
     #
