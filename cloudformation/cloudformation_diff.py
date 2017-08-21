@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 # (c) 2017, cytopia <cytopia@everythingcli.org>
@@ -28,7 +28,8 @@ author: cytopia (@cytopia)
 
 short_description: Diff compare changes that would occur when submitting local cloudformation template to AWS remote.
 description:
-    -  Shows the changes of the cloudformation template, parameters and tags that would occur in case you actually submit the changes to AWS remote. The diff output is only viewable when using Ansible's C(--diff) mode. Diffs will be marked as C(changed).
+    -  Shows the changes of the cloudformation template, parameters and tags that would occur in case you actually submit the changes to AWS remote.
+    - The diff output is only viewable when using Ansible's C(--diff) mode. Diffs will be marked as C(changed).
     - More examples at U(https://github.com/cytopia/ansible-modules)
 version_added: "2.4"
 options:
@@ -41,7 +42,7 @@ options:
 
     template:
         description:
-            - Path to local cloudformation template file (yaml or json).
+            - Path to local cloudformation template file C(yaml) or C(json).
         required: true
         default: null
         aliases: []
@@ -69,28 +70,28 @@ options:
 
     ignore_hidden_params:
         description:
-            - In parameter diff mode, ignore any template parameters with 'NoEcho: true'.
+            - In parameter diff mode, ignore any template parameters with C(NoEcho:true).
         required: false
         default: false
         aliases: []
 
     ignore_final_newline:
         description:
-            - Strip any final newlines (\n) and (\r) for diff output.
+            - Strip any final newlines C(\\n) and C(\\r) for diff output.
         required: false
         default: false
         aliases: []
 
     output_format:
         description:
-            - Specify in what format to view the diff output ('json' or 'yaml').
+            - Specify in what format to view the diff output I(json) or I(yaml).
         required: false
         default: 'json'
         aliases: []
 
     output_choice:
         description:
-            - Specify what to diff ('template', 'parameters' or 'tags').
+            - Specify what to diff I(template), I(parameters) or I(tags).
         required: false
         default: 'template'
         aliases: []
@@ -105,7 +106,7 @@ extends_documentation_fragment:
 '''
 
 EXAMPLES = '''
-# By using the following:
+# By using the following
 #   when: ansible_check_mode
 #   check_mode: no
 # you can make sure to only run the cloudformation_diff in ansible --check mode
@@ -133,7 +134,7 @@ EXAMPLES = '''
   check_mode: no
 
 # Get changes for the parameters and ignore any
-# NoEcho: true parameters.
+# NoEcho:true parameters.
 # Input stack is yaml (can also be json).
 # Diff is shown in json.
 # Run: ansible-playbook playbook.yml --diff --check
@@ -173,17 +174,34 @@ EXAMPLES = '''
   check_mode: no
 '''
 
+RETURN = '''
+diff:
+    description: diff in yaml or json depending on the choice
+    returned: success
+    type: string
+    sample: + this line was added
+
+'''
+
 # Python default imports
 import os
 import json
 import traceback
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except ImportError:
+    OrderedDict = dict
+
 from functools import partial
 
 # Python Custom libraries
 # requires 'cfn_flip'
 # $ pip install cfn_flip
-from cfn_flip import flip, to_yaml, to_json
+try:
+    from cfn_flip import flip, to_yaml, to_json
+    HAS_CFN_FLIP = True
+except ImportError:
+    HAS_CFN_FLIP = False
 
 try:
     import boto3
@@ -225,13 +243,13 @@ class CloudFormationServiceManager:
 
     def describe_stack(self, stack_name):
         try:
-            func = partial(self.client.describe_stacks,StackName=stack_name)
+            func = partial(self.client.describe_stacks, StackName=stack_name)
             response = self.paginated_response(func, 'Stacks')
             if response:
                 return response[0]
             self.module.fail_json(msg="Error describing stack - an empty response was returned")
         except Exception as e:
-            #self.module.fail_json(msg="Error describing stack - " + str(e), exception=traceback.format_exc())
+            # self.module.fail_json(msg="Error describing stack - " + str(e), exception=traceback.format_exc())
             # Do not raise an erroy here, but return an empty response.
             # We will take care about this in a later stage in the module run.
             return dict()
@@ -241,7 +259,7 @@ class CloudFormationServiceManager:
             response = self.client.get_template(StackName=stack_name)
             return response.get('TemplateBody')
         except Exception as e:
-            #self.module.fail_json(msg="Error getting stack template - " + str(e), exception=traceback.format_exc())
+            # self.module.fail_json(msg="Error getting stack template - " + str(e), exception=traceback.format_exc())
             # Do not raise an erroy here, but return an empty response.
             # We will take care about this in a later stage in the module run.
             return dict()
@@ -251,7 +269,7 @@ class CloudFormationServiceManager:
         Returns expanded response for paginated operations.
         The 'result_key' is used to define the concatenated results that are combined from each paginated response.
         '''
-        args=dict()
+        args = dict()
         if next_token:
             args['NextToken'] = next_token
         response = func(**args)
@@ -288,25 +306,31 @@ def quote_json(obj):
     Treat all json key/values as strings and therefore
     quote them to be consistent
     '''
-    if type(obj) in (bool, str, int, float, long, complex):
+
+    # possible nicer way: https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
+    if isinstance(obj, (bool, str, int, float, complex)):
         return str(obj)
     if isinstance(obj, (list, tuple)):
         return [quote_json(item) for item in obj]
     if isinstance(obj, dict):
-        return {quote_json(key):quote_json(value) for key, value in obj.items()}
+        return dict((quote_json(key), quote_json(value)) for key, value in obj.items())
     return obj
+
 
 def del_newline_json(obj):
     '''
     Remove final newline
     '''
-    if type(obj) in (bool, str, int, float, long, complex):
+
+    # possible nicer way: https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
+    if isinstance(obj, (bool, str, int, float, complex)):
         return str(obj).rstrip('\r\n')
     if isinstance(obj, (list, tuple)):
         return [del_newline_json(item) for item in obj]
     if isinstance(obj, dict):
-        return {del_newline_json(key):del_newline_json(value) for key, value in obj.items()}
+        return dict((del_newline_json(key), del_newline_json(value)) for key, value in obj.items())
     return str(obj).rstrip('\r\n')
+
 
 def to_dict(items, key, value):
     '''
@@ -373,12 +397,13 @@ def get_json_or_yaml(data, output_format='json'):
         data = to_yaml(data)
         data = to_json(data)
 
-
     # Create python dict
     data = json.loads(data)
 
     # Sort python dict
     data = SortedDict(**data)
+
+    # Quote keys
     data = quote_json(data)
 
     # Return json or yaml
@@ -394,7 +419,11 @@ def cfndiff_module_validation(module):
     '''
     # Boto3 is required!
     if not HAS_BOTO3:
-        module.fail_json(msg='boto3 is required.')
+        module.fail_json(msg='boto3 is required. Try pip install boto3')
+
+    # cfn_flip is required!
+    if not HAS_CFN_FLIP:
+        module.fail_json(msg='cfn_flip is required. Try pip install cfn_flip')
 
     template = module.params['template']
     b_template = to_bytes(template, errors='surrogate_or_strict')
@@ -463,13 +492,12 @@ def main():
     #
     # When yes, then we remove final newlines
     if ignore_final_newline:
-         cloud_template = del_newline_json(get_json_or_yaml(cloud_template, 'json'))
-         local_template = del_newline_json(get_json_or_yaml(local_template, 'json'))
-         cloud_params = del_newline_json(get_json_or_yaml(cloud_params, 'json'))
-         local_params = del_newline_json(get_json_or_yaml(local_params, 'json'))
-         cloud_tags = del_newline_json(get_json_or_yaml(cloud_tags, 'json'))
-         local_tags = del_newline_json(get_json_or_yaml(local_tags, 'json'))
-
+        cloud_template = del_newline_json(get_json_or_yaml(cloud_template, 'json'))
+        local_template = del_newline_json(get_json_or_yaml(local_template, 'json'))
+        cloud_params = del_newline_json(get_json_or_yaml(cloud_params, 'json'))
+        local_params = del_newline_json(get_json_or_yaml(local_params, 'json'))
+        cloud_tags = del_newline_json(get_json_or_yaml(cloud_tags, 'json'))
+        local_tags = del_newline_json(get_json_or_yaml(local_tags, 'json'))
 
     # Get diff output
     #
@@ -478,7 +506,7 @@ def main():
     # So the user can request to ignore it.
     if output_choice == 'template':
 
-        if ignore_template_desc == True:
+        if ignore_template_desc:
             # Need json Dict for .pop()
             cloud_dict = get_json_or_yaml(cloud_template, 'json')
             local_dict = get_json_or_yaml(local_template, 'json')
@@ -525,7 +553,7 @@ def main():
         local_params = templ_def_params.copy()
         local_params.update(param_params)
 
-        if ignore_hidden_params == True:
+        if ignore_hidden_params:
             hidden_params = cfn_get_noecho_param_names(templ_params)
             cloud_params = get_json_or_yaml(cloud_params, 'json')
             for key in hidden_params:
@@ -536,12 +564,10 @@ def main():
         local_dict = get_json_or_yaml(local_params, output_format)
         cloud_dict = get_json_or_yaml(cloud_params, output_format)
 
-
     elif output_choice == 'tags':
         # Convert to nice yaml/json output
         cloud_dict = get_json_or_yaml(cloud_tags, output_format)
         local_dict = get_json_or_yaml(local_tags, output_format)
-
 
     # Ansible diff output
     diff = {
@@ -553,8 +579,8 @@ def main():
 
     # Ansible module returned variables
     result = dict(
-        diff = diff,
-        changed = changed
+        diff=diff,
+        changed=changed
     )
 
     # Exit ansible module call
