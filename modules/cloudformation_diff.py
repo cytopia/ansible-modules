@@ -180,7 +180,6 @@ diff:
     returned: success
     type: string
     sample: + this line was added
-
 '''
 
 # Python default imports
