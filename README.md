@@ -4,6 +4,39 @@ Some custom ansible modules not yet submitted or accepted by [Ansible](https://g
 
 ## Usage
 
+#### diff
+
+An Ansible module to do generic diffs against strings, files and command outputs.
+
+**Task Examples**
+
+```yml
+# Diff compare two strings
+- diff:
+    source: "foo"
+    target: "bar"
+    source_type: string
+    target_type: string
+# Diff compare variable against template file (as strings)
+- diff:
+    source: "{{ lookup('template', tpl.yml.j2) }}"
+    target: "{{ my_var }}"
+    source_type: string
+    target_type: string
+# Diff compare string against command output
+- diff:
+    source: "/bin/bash"
+    target: "which bash"
+    source_type: string
+    target_type: command
+# Diff compare file against command output
+- diff:
+    source: "/etc/hostname"
+    target: "hostname"
+    source_type: file
+    target_type: command
+```
+
 #### cloudformation_diff
 
 An Ansible module that will show the differences that would occur in case you actually run [cloudformation_module](http://docs.ansible.com/ansible/latest/cloudformation_module.html). Changes to be shown include:
